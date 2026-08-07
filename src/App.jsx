@@ -3,6 +3,7 @@ import StationList from "./components/StationList";
 
 // Importa ícono para representar visualmente la app
 import { FaGasPump } from "react-icons/fa";
+import "./index.css";
 
 // Componente principal de la aplicación
 function App() {
