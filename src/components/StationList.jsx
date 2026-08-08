@@ -20,13 +20,16 @@ const StationList = () => {
   // Guarda el botón presionado para devolverle el foco al cerrar el modal
   const lastFocusedRef = useRef(null);
 
-  // Sincroniza los datos recibidos manteniendo los cambios locales realizados
+  // Escucha cambios en las estaciones recibidas del hook/API
   useEffect(() => {
     if (stations.length > 0) {
       setStationList((prevList) => {
+        // Si ya existen datos guardados en el estado local
         if (prevList.length > 0) {
           return stations.map((newItem) => {
+            // Busca si la estación ya existía localmente
             const localItem = prevList.find((p) => p.id === newItem.id);
+            // Conserva el status modificado por el usuario si existe
             return localItem
               ? { ...newItem, status: localItem.status }
               : newItem;
@@ -50,11 +53,11 @@ const StationList = () => {
     setStationList(updated);
   };
 
-  // Selecciona una estación y consulta el caché/servidor
+  // Maneja el clic para seleccionar una estación
   const handleSelect = async (id, event) => {
-    lastFocusedRef.current = event.currentTarget;
-    setSelectedStation(id);
-    await refetch();
+    lastFocusedRef.current = event.currentTarget; // Guarda el botón presionado para devolver el foco
+    setSelectedStation(id); // Guarda el ID de la estación seleccionada
+    await refetch(); // Consulta si la información está en caché o requiere re-fetch
   };
 
   // Cierra el detalle, devuelve el foco y consulta el caché/servidor
