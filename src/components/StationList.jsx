@@ -1,33 +1,43 @@
-// Importa hooks de React
+// React: hooks para manejar estado, efectos de lado y referencias
 import { useState, useEffect, useRef } from "react";
 
-// Importa el componente que muestra los servicios de la estación
+// Componente hijo que muestra los servicios de una estación
 import StationServices from "../components/StationServices";
 
-// Hook personalizado para obtener estaciones (API / mock)
+// Hook personalizado para consultar las estaciones (desde API o caché)
 import { useStations } from "../hooks/useStation";
 
 const StationList = () => {
-  // Obtiene datos y estado de carga
-  const { data: stations = [], isLoading } = useStations();
+  // Obtiene datos del servidor, estado de carga y función para recargar
+  const { data: stations = [], isLoading, refetch } = useStations();
 
-  // Guarda la estación seleccionada
+  // ID de la estación seleccionada
   const [selectedStation, setSelectedStation] = useState(null);
 
-  // Estado local para poder modificar estaciones (ej: activar/inactivar)
+  // Copia local de datos para permitir cambios (ej: activar/desactivar)
   const [stationList, setStationList] = useState([]);
 
-  // Referencia para restaurar el foco cuando se cierre el detalle
+  // Guarda el botón presionado para devolverle el foco al cerrar el modal
   const lastFocusedRef = useRef(null);
 
-  // Sincroniza las estaciones del hook con el estado local
+  // Sincroniza los datos recibidos manteniendo los cambios locales realizados
   useEffect(() => {
     if (stations.length > 0) {
-      setStationList(stations);
+      setStationList((prevList) => {
+        if (prevList.length > 0) {
+          return stations.map((newItem) => {
+            const localItem = prevList.find((p) => p.id === newItem.id);
+            return localItem
+              ? { ...newItem, status: localItem.status }
+              : newItem;
+          });
+        }
+        return stations;
+      });
     }
   }, [stations]);
 
-  // Alterna el estado de una estación (activa ↔ inactiva)
+  // Cambia el estado de una estación entre "activa" e "inactiva"
   const toggleStationStatus = (id) => {
     const updated = stationList.map((station) =>
       station.id === id
@@ -37,44 +47,43 @@ const StationList = () => {
           }
         : station,
     );
-
-    // Actualiza el estado local
     setStationList(updated);
   };
 
-  // Maneja la selección de estación
-  const handleSelect = (id, event) => {
-    // Guarda el botón que tenía el foco
+  // Selecciona una estación y consulta el caché/servidor
+  const handleSelect = async (id, event) => {
     lastFocusedRef.current = event.currentTarget;
-
-    // Establece la estación seleccionada
     setSelectedStation(id);
+    await refetch();
   };
 
-  // Cierra el panel de servicios
-  const handleClose = () => {
-    // Limpia la selección
+  // Cierra el detalle, devuelve el foco y consulta el caché/servidor
+  const handleClose = async () => {
     setSelectedStation(null);
-
-    // Restaura el foco al botón original
     lastFocusedRef.current?.focus();
+    await refetch();
   };
 
-  // Carga de estaciones
-  if (isLoading) return <p>Cargando estaciones...</p>;
+  // Muestra pantalla de carga inicial
+  if (isLoading && !stationList.length) return <p>Cargando estaciones...</p>;
 
-  // Mensaje si no hay estaciones
-  if (!stations.length) return <p>No hay estaciones</p>;
+  // Muestra mensaje si no hay datos
+  if (!stations.length && !stationList.length) return <p>No hay estaciones</p>;
 
   return (
     <div>
       <h2>Estaciones</h2>
 
-      {/* Lista de estaciones */}
+      {/* Botón manual para probar el caché */}
+      <button onClick={() => refetch()} style={{ marginBottom: "1rem" }}>
+        🔄 Probar Caché (Refrescar)
+      </button>
+
+      {/* Lista principal de estaciones */}
       <ul>
         {stationList.map((station) => (
           <li key={station.id}>
-            {/* Botón para seleccionar estación */}
+            {/* Botón para abrir el detalle */}
             <button
               onClick={(e) => handleSelect(station.id, e)}
               aria-label={`Seleccionar estación ${station.name}`}
@@ -82,19 +91,18 @@ const StationList = () => {
               {station.name} - {station.id}
             </button>
 
-            {/* Botón para cambiar estado */}
+            {/* Botón para activar/inactivar */}
             <button
               onClick={() => toggleStationStatus(station.id)}
               aria-label={`Cambiar estado de la estación ${station.name}`}
             >
-              {/* Muestra estado actual */}
               {station.status === "activa" ? "Activa" : "Inactiva"}
             </button>
           </li>
         ))}
       </ul>
 
-      {/* Render condicional del detalle */}
+      {/* Modal/Detalle de la estación seleccionada */}
       {selectedStation && (
         <StationServices stationId={selectedStation} onClose={handleClose} />
       )}

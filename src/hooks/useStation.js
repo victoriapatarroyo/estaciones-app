@@ -1,40 +1,35 @@
-// Importa hooks básicos de React
-import { useState, useEffect } from "react";
+// Hooks de React para gestionar estado, efectos y persistencia de funciones
+import { useState, useEffect, useCallback } from "react";
 
-// Importa la función que simula la llamada a la API
+// Servicio que obtiene las estaciones (evalúa si usa caché o API)
 import { getStations } from "../services/stationServices";
 
-// Hook personalizado para obtener estaciones
+// Hook personalizado para gestionar el estado de las estaciones
 export const useStations = () => {
-  // Estado para guardar los datos de estaciones
+  // Lista de estaciones obtenidas
   const [data, setData] = useState([]);
 
-  // Estado para manejar el loading
+  // Estado de carga
   const [isLoading, setIsLoading] = useState(true);
 
-  // useEffect se ejecuta una sola vez al montar el componente
+  // Función guardada en memoria para obtener los datos de las estaciones
+  const fetchStations = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const result = await getStations(); // Llama al servicio (API o caché)
+      setData(result); // Guarda los datos obtenidos
+    } catch (error) {
+      console.error("Error cargando estaciones:", error); // Manejo de errores
+    } finally {
+      setIsLoading(false); // Desactiva el indicador de carga
+    }
+  }, []);
+
+  // Carga las estaciones automáticamente al montar el componente
   useEffect(() => {
-    // Función async para obtener datos
-    const fetchStations = async () => {
-      try {
-        // Llama al servicio (simula API)
-        const result = await getStations();
-
-        // Guarda las estaciones en el estado
-        setData(result);
-      } catch (error) {
-        // Manejo básico de errores
-        console.error("Error cargando estaciones:", error);
-      } finally {
-        // Siempre desactiva el loading
-        setIsLoading(false);
-      }
-    };
-
-    // Ejecuta la función
     fetchStations();
-  }, []); // [] = solo se ejecuta una vez
+  }, [fetchStations]);
 
-  // Retorna los datos y el estado de carga
-  return { data, isLoading };
+  // Retorna los datos, el estado de carga y la función para recargar manualmente
+  return { data, isLoading, refetch: fetchStations };
 };
